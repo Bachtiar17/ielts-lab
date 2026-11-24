@@ -22,8 +22,22 @@ import type {
 
 // Default to same-origin ("") so Next.js built-in /api/* routes work on a single port (3000)
 // in Google AI Studio, Cloud Run, or local `npm run dev`. Set NEXT_PUBLIC_API_URL=http://localhost:8000
-// only if you explicitly want to target the Python FastAPI server instead.
-export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
+// only if you explicitly want to target the Python FastAPI server locally.
+function resolveApiBase(): string {
+  const envBase = (process.env.NEXT_PUBLIC_API_URL || "").trim().replace(/\/$/, "");
+  if (!envBase) return "";
+  // Safety guard: never allow a stale localhost:8000 env var to break remote previews (e.g. Google AI Studio).
+  if (
+    typeof window !== "undefined" &&
+    /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(envBase) &&
+    !["localhost", "127.0.0.1"].includes(window.location.hostname)
+  ) {
+    return "";
+  }
+  return envBase;
+}
+
+export const API_BASE = resolveApiBase();
 
 function personalGeminiHeaders(): Record<string, string> {
   const cfg = loadPersonalGeminiConfig();
@@ -38,8 +52,10 @@ function personalGeminiHeaders(): Record<string, string> {
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const base = resolveApiBase();
+  const res = await fetch(`${base}${path}`, {
     ...init,
+    credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
       ...(init?.headers || {}),
@@ -182,9 +198,10 @@ export function synthesizeListeningPartAudio(
 
 export async function fetchUnifiedProgress(moduleName?: string): Promise<ProgressSummaryResponse> {
   const local = getLocalProgressSummary(moduleName);
+  const base = resolveApiBase();
   // In same-origin Node.js / AI Studio mode, prefer per-browser localStorage so each user
   // keeps private, container-restart-proof progress; merge any server-side sessions if pointing to FastAPI.
-  if (!API_BASE) {
+  if (!base) {
     return local;
   }
   try {
