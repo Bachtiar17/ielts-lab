@@ -6,13 +6,31 @@ An open-source **IELTS Academic** practice workbench built for authentic compute
 
 ---
 
-## Easy 1-Click Start (No Terminal Experience Needed)
+## Deploy Free on Google AI Studio (Single-Port Node.js)
+
+This repository is **Google AI Studio ready** out of the box — it runs completely as a single Node.js Next.js app on **port 3000** using built-in `/api/*` route handlers, while keeping `backend/` and `pipelines/` intact for offline Python research/calibration.
+
+1. Import this GitHub repository into **Google AI Studio** (Build / App preview).
+2. AI Studio automatically runs `npm install`, `npm run dev`, and `npm run build` from the root `package.json` on **port 3000** — no Python virtual environment or separate port 8000 server needed!
+3. *(Optional)* Set `GEMINI_API_KEY` in AI Studio's environment/secrets, **or** let each user enter their own personal Free/Paid Gemini key directly via the in-app **Add Personal Gemini API** button.
+4. **Private per-user progress:** Each learner's Recent Sessions, clickable Past Summaries, and Skill Accuracy Profile are stored cleanly in their own browser (`localStorage`), so progress survives container restarts and stays separate between users without needing a paid database.
+
+---
+
+## Easy 1-Click Local Start (No Terminal Experience Needed)
 
 ### Prerequisites (one-time install)
-1. **[Python 3.11+](https://www.python.org/downloads/)** (on Windows, check *"Add Python to PATH"* during install)
-2. **[Node.js 20 LTS+](https://nodejs.org/)**
+1. **[Node.js 20 LTS+](https://nodejs.org/)** *(Required — runs the full app alone via `npm install && npm run dev`!)*
+2. **[Python 3.11+](https://www.python.org/downloads/)** *(Optional — only needed for offline calibration pipelines or running the FastAPI backend)*
 
-### Start the App
+### Start Locally (Node.js Only — Simplest!)
+```bash
+npm install
+npm run dev
+```
+Then open **http://localhost:3000**.
+
+### Or Use the 1-Click Launchers (Full Python + Node Stack)
 - **macOS / Linux:** Open Terminal in this folder and run:
   ```bash
   ./start.sh

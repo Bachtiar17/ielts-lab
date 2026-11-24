@@ -318,7 +318,11 @@ function ListeningExamWorkspace() {
     setError(null);
     try {
       const elapsedSec = Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000));
-      const res = await submitListeningSession(sessionId, answers, elapsedSec);
+      const res = await submitListeningSession(sessionId, answers, elapsedSec, {
+        test_id: testId,
+        mode: isPartDrill ? "drill" : "section_mock",
+        passage_index: isPartDrill ? drillPartIndex : null,
+      });
       setResult(res);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to submit Listening answers.");
@@ -616,7 +620,12 @@ function ListeningExamWorkspace() {
               <audio
                 ref={audioElRef}
                 controls
-                src={`${API_BASE}${currentPart.audio_url}`}
+                src={
+                  currentPart.audio_url.startsWith("data:") ||
+                  currentPart.audio_url.startsWith("http")
+                    ? currentPart.audio_url
+                    : `${API_BASE}${currentPart.audio_url}`
+                }
                 className="h-9 max-w-md"
               />
             ) : (

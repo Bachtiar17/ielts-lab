@@ -1,0 +1,19 @@
+{
+  "name": "ielts-lab",
+  "version": "0.2.0",
+  "private": true,
+  "description": "IELTS Academic Reading & Listening workbench — Google AI Studio & local Node.js single-port entrypoint.",
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm --workspace=frontend run dev",
+    "build": "npm --workspace=frontend run build",
+    "start": "npm --workspace=frontend run start",
+    "lint": "npm --workspace=frontend run lint",
+    "test:ts": "npm --workspace=frontend run test:ts"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

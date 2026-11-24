@@ -1,4 +1,11 @@
 import { loadPersonalGeminiConfig } from "@/lib/geminiSettings";
+import {
+  clearLocalSessions,
+  clearLocalSkills,
+  getLocalCompletedSession,
+  getLocalProgressSummary,
+  saveLocalCompletedSession,
+} from "@/lib/localHistory";
 import type {
   CreateSessionResponse,
   DistractorExplanationResponse,
@@ -13,7 +20,10 @@ import type {
   TestGeminiKeyResponse,
 } from "@/types/reading";
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Default to same-origin ("") so Next.js built-in /api/* routes work on a single port (3000)
+// in Google AI Studio, Cloud Run, or local `npm run dev`. Set NEXT_PUBLIC_API_URL=http://localhost:8000
+// only if you explicitly want to target the Python FastAPI server instead.
+export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
 
 function personalGeminiHeaders(): Record<string, string> {
   const cfg = loadPersonalGeminiConfig();
@@ -73,15 +83,22 @@ export function createReadingSession(payload: {
   });
 }
 
-export function submitReadingSession(
+export async function submitReadingSession(
   sessionId: string,
   answers: Record<string, string>,
-  durationSec: number
+  durationSec: number,
+  meta?: { test_id: string; mode: "drill" | "section_mock"; passage_index?: number | null }
 ): Promise<SubmitSessionResponse> {
-  return apiFetch<SubmitSessionResponse>(`/api/reading/sessions/${sessionId}/submit`, {
+  const res = await apiFetch<SubmitSessionResponse>(`/api/reading/sessions/${sessionId}/submit`, {
     method: "POST",
-    body: JSON.stringify({ answers, duration_sec: durationSec }),
+    body: JSON.stringify({
+      answers,
+      duration_sec: durationSec,
+      ...(meta || {}),
+    }),
   });
+  saveLocalCompletedSession(res);
+  return res;
 }
 
 export function explainReadingDistractor(payload: {
@@ -121,15 +138,22 @@ export function createListeningSession(payload: {
   });
 }
 
-export function submitListeningSession(
+export async function submitListeningSession(
   sessionId: string,
   answers: Record<string, string>,
-  durationSec: number
+  durationSec: number,
+  meta?: { test_id: string; mode: "drill" | "section_mock"; passage_index?: number | null }
 ): Promise<SubmitSessionResponse> {
-  return apiFetch<SubmitSessionResponse>(`/api/listening/sessions/${sessionId}/submit`, {
+  const res = await apiFetch<SubmitSessionResponse>(`/api/listening/sessions/${sessionId}/submit`, {
     method: "POST",
-    body: JSON.stringify({ answers, duration_sec: durationSec }),
+    body: JSON.stringify({
+      answers,
+      duration_sec: durationSec,
+      ...(meta || {}),
+    }),
   });
+  saveLocalCompletedSession(res);
+  return res;
 }
 
 export function explainListeningDistractor(payload: {
@@ -156,23 +180,53 @@ export function synthesizeListeningPartAudio(
 
 // ==================== UNIFIED PROGRESS, PAST SESSIONS, RESETS & SETTINGS ====================
 
-export function fetchUnifiedProgress(moduleName?: string): Promise<ProgressSummaryResponse> {
-  const qs = moduleName ? `?module=${encodeURIComponent(moduleName)}` : "";
-  return apiFetch<ProgressSummaryResponse>(`/api/progress${qs}`);
+export async function fetchUnifiedProgress(moduleName?: string): Promise<ProgressSummaryResponse> {
+  const local = getLocalProgressSummary(moduleName);
+  // In same-origin Node.js / AI Studio mode, prefer per-browser localStorage so each user
+  // keeps private, container-restart-proof progress; merge any server-side sessions if pointing to FastAPI.
+  if (!API_BASE) {
+    return local;
+  }
+  try {
+    const qs = moduleName ? `?module=${encodeURIComponent(moduleName)}` : "";
+    const remote = await apiFetch<ProgressSummaryResponse>(`/api/progress${qs}`);
+    if (remote.recent_sessions.length > 0 || remote.skills.length > 0) {
+      return remote;
+    }
+    return local;
+  } catch {
+    return local;
+  }
 }
 
-export function fetchCompletedSession(sessionId: string): Promise<SubmitSessionResponse> {
+export async function fetchCompletedSession(sessionId: string): Promise<SubmitSessionResponse> {
+  const local = getLocalCompletedSession(sessionId);
+  if (local) return local;
   return apiFetch<SubmitSessionResponse>(`/api/sessions/${sessionId}`);
 }
 
-export function resetRecentSessions(moduleName?: string): Promise<{ deleted_count: number; scope: string }> {
+export async function resetRecentSessions(
+  moduleName?: string
+): Promise<{ deleted_count: number; scope: string }> {
+  clearLocalSessions(moduleName);
   const qs = moduleName ? `?module=${encodeURIComponent(moduleName)}` : "";
-  return apiFetch(`/api/sessions${qs}`, { method: "DELETE" });
+  try {
+    return await apiFetch(`/api/sessions${qs}`, { method: "DELETE" });
+  } catch {
+    return { deleted_count: 0, scope: moduleName || "local_sessions" };
+  }
 }
 
-export function resetSkillProfile(moduleName?: string): Promise<{ deleted_count: number; scope: string }> {
+export async function resetSkillProfile(
+  moduleName?: string
+): Promise<{ deleted_count: number; scope: string }> {
+  clearLocalSkills(moduleName);
   const qs = moduleName ? `?module=${encodeURIComponent(moduleName)}` : "";
-  return apiFetch(`/api/skills${qs}`, { method: "DELETE" });
+  try {
+    return await apiFetch(`/api/skills${qs}`, { method: "DELETE" });
+  } catch {
+    return { deleted_count: 0, scope: moduleName || "local_skills" };
+  }
 }
 
 export function fetchStrategyNotes(moduleName?: string): Promise<StrategyNoteItem[]> {

@@ -1,14 +1,16 @@
 {
   "name": "ielts-lab-frontend",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p ${PORT:-3000}",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "next start -p ${PORT:-3000}",
+    "lint": "next lint",
+    "test:ts": "node --experimental-strip-types --test src/lib/server/__tests__/graders.test.ts"
   },
   "dependencies": {
+    "@google/genai": "^3.6.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",
     "next": "15.1.7",

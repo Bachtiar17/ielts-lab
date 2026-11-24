@@ -211,7 +211,11 @@ function ReadingExamWorkspace() {
     setError(null);
     try {
       const elapsedSec = Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000));
-      const res = await submitReadingSession(sessionId, answers, elapsedSec);
+      const res = await submitReadingSession(sessionId, answers, elapsedSec, {
+        test_id: testId,
+        mode: isDrillMode ? "drill" : "section_mock",
+        passage_index: isLegacyPassageDrill ? drillPassageIndex : null,
+      });
       setResult(res);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to submit answers.");

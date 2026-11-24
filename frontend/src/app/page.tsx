@@ -213,8 +213,7 @@ export default function HomePage() {
 
         {error && (
           <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
-            <strong>Backend connection error:</strong> {error}. Make sure FastAPI is running on{" "}
-            <code className="rounded bg-white px-1.5 py-0.5">http://localhost:8000</code>.
+            <strong>Connection error:</strong> {error}. Please refresh or verify the app server is running.
           </div>
         )}
 
